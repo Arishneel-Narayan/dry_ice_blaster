@@ -16,11 +16,13 @@ def perform_cba(
     manual_cleaning_waste_disposal_per_session,
     dry_ice_cleaning_time_reduction_percent,
     revenue_per_hour_production,
-    blaster_power_consumption_kw, # New Input: Power consumption
-    electricity_cost_per_kwh # New Input: Electricity cost
+    blaster_power_consumption_kw,
+    electricity_cost_per_kwh,
+    machine_lifespan_years # New Input: Machine Lifespan
 ):
     """
-    Performs the cost-benefit analysis for dry ice blasting vs. manual cleaning.
+    Performs the cost-benefit analysis for dry ice blasting vs. manual cleaning,
+    including ROI over machine lifespan and simple payback period.
     """
 
     # --- Assumptions (Internal to the function for calculation) ---
@@ -51,7 +53,6 @@ def perform_cba(
         annual_cleaning_sessions
     )
 
-    # New Calculation: Annual Power Cost for Blaster
     blaster_annual_power_cost = (
         blaster_power_consumption_kw *
         dry_ice_cleaning_hours_per_session * # Assuming power consumption only during active blasting
@@ -63,7 +64,7 @@ def perform_cba(
         dry_ice_annual_labor_cost +
         dry_ice_annual_pellet_cost +
         blaster_maintenance_annual +
-        blaster_annual_power_cost # Added power cost
+        blaster_annual_power_cost
     )
 
     # --- Benefits Calculation ---
@@ -73,13 +74,42 @@ def perform_cba(
 
     # --- Cost-Benefit Summary ---
     annual_operational_cost_savings = total_manual_annual_operational_cost - total_dry_ice_annual_operational_cost
+    
+    # Net Financial Benefit for Year 1 (includes initial capital cost)
     net_financial_benefit_year_1 = annual_operational_cost_savings + annual_revenue_gain_from_uptime - dry_ice_blaster_cost
+    
+    # Net Financial Benefit for Subsequent Years (annual operational savings + revenue gain)
     net_financial_benefit_subsequent_years = annual_operational_cost_savings + annual_revenue_gain_from_uptime
 
-    # ROI Calculation (using Net Financial Benefit - Subsequent Years for annual return)
-    # Underlying Assumption: ROI is calculated as the annual benefit from subsequent years relative to the initial investment.
-    # This assumes the 'benefit' is consistent annually after the first year.
-    roi_percentage = (net_financial_benefit_subsequent_years / dry_ice_blaster_cost) * 100 if dry_ice_blaster_cost > 0 else 0
+    # --- ROI Calculation over Machine Lifespan ---
+    # Total benefit over lifespan = (Net benefit in subsequent years * (lifespan - 1)) + Net benefit in Year 1
+    # Underlying Assumption: Net financial benefit is constant for subsequent years.
+    total_benefit_over_lifespan = net_financial_benefit_year_1 + (net_financial_benefit_subsequent_years * (machine_lifespan_years - 1))
+    
+    # Ensure machine_lifespan_years is at least 1 for calculation
+    if machine_lifespan_years <= 0:
+        total_benefit_over_lifespan = 0 # Or handle as an error/zero ROI
+        
+    roi_over_lifespan = (total_benefit_over_lifespan / dry_ice_blaster_cost) * 100 if dry_ice_blaster_cost > 0 else 0
+
+    # --- Simple Payback Period Calculation ---
+    # Underlying Assumption: Constant annual net benefit after Year 1.
+    payback_period_years = "N/A" # Default for cases where it never pays back
+    if net_financial_benefit_subsequent_years > 0:
+        # Calculate how many years it takes to recover the initial investment
+        # The initial "deficit" to recover is the blaster cost minus any Year 1 operational savings/gain
+        initial_investment_to_recover = dry_ice_blaster_cost - (annual_operational_cost_savings + annual_revenue_gain_from_uptime)
+
+        if initial_investment_to_recover <= 0: # If it pays back in less than 1 year
+            payback_period_years = f"< 1 year (Paid back in Year 1)"
+        else:
+            payback_period_years_float = initial_investment_to_recover / net_financial_benefit_subsequent_years
+            payback_period_years = f"{payback_period_years_float:.2f} years"
+    elif net_financial_benefit_subsequent_years <= 0 and dry_ice_blaster_cost > 0:
+        payback_period_years = "Never (Negative Annual Benefit)"
+    elif dry_ice_blaster_cost == 0:
+        payback_period_years = "N/A (No initial cost)"
+
 
     # Prepare data for table
     data = {
@@ -90,7 +120,7 @@ def perform_cba(
             "Annual Water Usage Costs",
             "Annual Waste Disposal Costs",
             "Annual Maintenance & Utilities (Blaster)",
-            "Annual Blaster Power Costs", # New row
+            "Annual Blaster Power Costs",
             "Annual Revenue Gain from Reduced Downtime"
         ],
         "Current Manual Cleaning (Annual FJD)": [
@@ -100,7 +130,7 @@ def perform_cba(
             manual_annual_water_cost,
             manual_annual_waste_disposal_cost,
             0,
-            0, # No power cost for manual in this context
+            0,
             0
         ],
         "Dry Ice Blasting (Annual FJD)": [
@@ -110,25 +140,25 @@ def perform_cba(
             0, # No water for dry ice blasting
             0, # No secondary waste for dry ice blasting
             blaster_maintenance_annual,
-            blaster_annual_power_cost, # Added power cost
+            blaster_annual_power_cost,
             annual_revenue_gain_from_uptime
         ]
     }
 
     df = pd.DataFrame(data)
     
-    return df, annual_operational_cost_savings, net_financial_benefit_year_1, net_financial_benefit_subsequent_years, roi_percentage
+    return df, annual_operational_cost_savings, net_financial_benefit_year_1, net_financial_benefit_subsequent_years, roi_over_lifespan, payback_period_years
 
 # --- Streamlit App ---
-st.set_page_config(layout="wide", page_title="Dry Ice Blasting CBA & ROI Calculator for BCF")
+st.set_page_config(layout="wide", page_title="Dry Ice Blasting CBA, ROI & Payback Calculator for BCF")
 
-st.title("🏭 Dry Ice Blasting Cost-Benefit Analysis & ROI for BCF")
+st.title("🏭 Dry Ice Blasting Cost-Benefit Analysis, ROI & Payback for BCF")
 st.subheader("Optimize Conveyor Belt Cleaning Efficiency")
 
 st.write(
-    "This calculator helps evaluate the financial benefits and Return on Investment of acquiring a dry ice blaster "
+    "This calculator helps evaluate the financial benefits, Return on Investment, and Payback Period of acquiring a dry ice blaster "
     "for conveyor belt cleaning at BCF, compared to the current manual process. "
-    "Adjust the parameters in the sidebar to see the impact on profitability and ROI!"
+    "Adjust the parameters in the sidebar to see the impact on profitability and investment metrics!"
 )
 
 st.markdown("---")
@@ -149,6 +179,11 @@ revenue_per_hour_production = st.sidebar.number_input(
     "Estimated Revenue per Hour of Production (FJD):", min_value=0.0, value=500.00, step=50.00, format="%.2f",
     help="Crucial for quantifying the benefit of reduced downtime. Estimate the revenue BCF generates from the production line per hour."
 )
+machine_lifespan_years = st.sidebar.number_input( # New Input
+    "Dry Ice Blaster Estimated Lifespan (Years):", min_value=1, value=5, step=1,
+    help="Expected operational life of the dry ice blaster for ROI calculation."
+)
+
 
 st.sidebar.subheader("Current Manual Cleaning Parameters")
 manual_staff_count = st.sidebar.number_input(
@@ -205,9 +240,9 @@ electricity_cost_per_kwh = st.sidebar.number_input(
 
 
 # --- Perform Calculation and Display Results ---
-st.header("Cost-Benefit Analysis & ROI Results")
+st.header("Cost-Benefit Analysis & Investment Metrics")
 
-df_cba, annual_operational_cost_savings, net_financial_benefit_year_1, net_financial_benefit_subsequent_years, roi_percentage = perform_cba(
+df_cba, annual_operational_cost_savings, net_financial_benefit_year_1, net_financial_benefit_subsequent_years, roi_over_lifespan, payback_period_years = perform_cba(
     daily_cleaning_frequency,
     manual_staff_count,
     manual_cleaning_hours_per_session,
@@ -222,7 +257,8 @@ df_cba, annual_operational_cost_savings, net_financial_benefit_year_1, net_finan
     dry_ice_cleaning_time_reduction_percent,
     revenue_per_hour_production,
     blaster_power_consumption_kw,
-    electricity_cost_per_kwh
+    electricity_cost_per_kwh,
+    machine_lifespan_years
 )
 
 st.write("---")
@@ -232,7 +268,7 @@ st.dataframe(df_cba.set_index("Category"))
 st.write("---")
 st.subheader("Summary of Financial Impact")
 
-col1, col2, col3, col4 = st.columns(4) # Added one more column for ROI
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
@@ -255,24 +291,39 @@ with col3:
         delta=f"FJD {net_financial_benefit_subsequent_years:,.2f}" if net_financial_benefit_subsequent_years >= 0 else f"FJD {net_financial_benefit_subsequent_years:,.2f}"
     )
 
-with col4: # Display ROI
+st.write("---")
+st.subheader("Investment Metrics")
+
+col_roi, col_payback = st.columns(2) # New columns for ROI and Payback
+
+with col_roi:
     st.metric(
-        label="Return on Investment (ROI)",
-        value=f"{roi_percentage:,.2f}%",
-        delta="Higher is better!" if roi_percentage >= 0 else "Negative ROI"
+        label=f"Return on Investment (ROI) over {machine_lifespan_years} Years",
+        value=f"{roi_over_lifespan:,.2f}%",
+        delta="Higher is better!" if roi_over_lifespan >= 0 else "Negative ROI"
     )
+
+with col_payback:
+    st.metric(
+        label="Simple Payback Period",
+        value=f"{payback_period_years}",
+        delta="Shorter is better!" if "years" in str(payback_period_years) and float(payback_period_years.replace(' years', '')) > 0 else None # Basic delta for visual cue
+    )
+
 
 st.write("---")
 st.subheader("Key Underlying Assumptions:")
-st.markdown("""
+st.markdown(f"""
 * **Annual Cleaning Sessions:** `Daily Cleaning Frequency (set in sidebar) * 365 days`
 * **Staff Hourly Cost:** Includes wages, benefits, and general overhead.
 * **Dry Ice Blaster Staff:** Assumed 1 operator for dry ice blasting.
 * **Dry Ice Blaster Power Consumption:** Assumed to be constant during the cleaning session hours.
-* **Electricity Cost per kWh:** Based on your facility's average commercial rate.
-* **Dry Ice Blaster Lifespan:** Not explicitly calculated in annual cost, but influences long-term CAPEX planning.
+* **Electricity Cost per kWh:** Based on your facility's average commercial rate. (As of June 2025, for commercial users in Fiji, this might be around FJD 0.30 - 0.45, but check your latest FEA bill.)
 * **Revenue per Hour of Production:** This is a critical input that significantly impacts the overall benefit. Ensure this value is accurately estimated for BCF.
-* **Return on Investment (ROI) Calculation:** Calculated as `(Net Financial Benefit - Subsequent Years / Dry Ice Blaster Purchase Cost) * 100`. This provides an annual ROI after the initial investment is absorbed.
+* **Return on Investment (ROI) Calculation:** Calculated as `(Total Net Financial Benefit over {machine_lifespan_years} Years / Dry Ice Blaster Purchase Cost) * 100`.
+    * **Underlying Assumption:** The annual net financial benefit (operational savings + revenue gain) is assumed to be constant each year after the initial investment year.
+* **Simple Payback Period Calculation:** This calculates the time it takes for the cumulative net benefits to equal the initial investment.
+    * **Underlying Assumption:** The annual net financial benefit is assumed to be constant each year. This method does not account for the time value of money.
 """)
 
 st.subheader("Qualitative Benefits of Dry Ice Blasting")
@@ -284,4 +335,4 @@ st.markdown("""
 * **Consistent Cleaning Quality:** Automated nature ensures a more uniform and deep clean compared to manual variations.
 """)
 
-st.info("Remember: This analysis provides an estimate. Actual values will depend on specific BCF operational data, local supplier quotes, and internal accounting practices.")
+st.info("Remember: This analysis provides an estimate. Actual values will depend on specific BCF operational data, local supplier quotes, and internal accounting practices. For a more detailed financial analysis, consider Net Present Value (NPV) and Internal Rate of Return (IRR).")
