@@ -314,7 +314,7 @@ with col_payback:
 st.write("---")
 st.subheader("Key Underlying Assumptions:")
 st.markdown(f"""
-* **aAnnual Cleaning Sessions:** `Daily Cleaning Frequency (set in sidebar) * 365 days`
+* **Annual Cleaning Sessions:** `Daily Cleaning Frequency (set in sidebar) * 365 days`
 * **Staff Hourly Cost:** Includes wages, benefits, and general overhead.
 * **Dry Ice Blaster Staff:** Assumed 1 operator for dry ice blasting.
 * **Dry Ice Blaster Power Consumption:** Assumed to be constant during the cleaning session hours.
