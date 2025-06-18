@@ -335,4 +335,4 @@ st.markdown("""
 * **Consistent Cleaning Quality:** Automated nature ensures a more uniform and deep clean compared to manual variations.
 """)
 
-st.info("Remember: This analysis provides an estimate. Actual values will depend on specific BCF operational data, local supplier quotes, and internal accounting practices. For a more detailed financial analysis, consider Net Present Value (NPV) and Internal Rate of Return (IRR).")
+#st.info("Remember: This analysis provides an estimate. Actual values will depend on specific BCF operational data, local supplier quotes, and internal accounting practices. For a more detailed financial analysis, consider Net Present Value (NPV) and Internal Rate of Return (IRR).")
