@@ -318,12 +318,12 @@ st.markdown(f"""
 * **Staff Hourly Cost:** Includes wages, benefits, and general overhead.
 * **Dry Ice Blaster Staff:** Assumed 1 operator for dry ice blasting.
 * **Dry Ice Blaster Power Consumption:** Assumed to be constant during the cleaning session hours.
-* **Electricity Cost per kWh:** Based on your facility's average commercial rate. 
+* **Electricity Cost per kWh:** Based on BCF's average commercial rate. 
 * **Revenue per Hour of Production:** This is a critical input that significantly impacts the overall benefit. Ensure this value is accurately estimated for BCF.
 * **Return on Investment (ROI) Calculation:** Calculated as `(Total Net Financial Benefit over {machine_lifespan_years} Years / Dry Ice Blaster Purchase Cost) * 100`.
     * **Underlying Assumption:** The annual net financial benefit (operational savings + revenue gain) is assumed to be constant each year after the initial investment year.
 * **Simple Payback Period Calculation:** This calculates the time it takes for the cumulative net benefits to equal the initial investment.
-    * **Underlying Assumption:** The annual net financial benefit is assumed to be constant each year. This method does not account for the time value of money.
+    * **Underlying Assumption:** The annual net financial benefit is assumed to be constant each year. 
 """)
 
 st.subheader("Qualitative Benefits of Dry Ice Blasting")
