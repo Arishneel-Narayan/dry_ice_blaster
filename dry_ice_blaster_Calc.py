@@ -237,33 +237,49 @@ with col2:
             help="Your facility's average electricity cost per kilowatt-hour (kWh). As of June 2025, for commercial users in Fiji, this might be around FJD 0.30 - 0.45, but check your latest FEA bill."
         )
 
+st.markdown("---")
 
-# --- Perform Calculation and Display Results ---
-with st.spinner("Updating calculations..."):
-    df_cba, annual_operational_cost_savings, net_financial_benefit_year_1, net_financial_benefit_subsequent_years, roi_over_lifespan, payback_period_years = perform_cba(
-        daily_cleaning_frequency,
-        manual_staff_count,
-        manual_cleaning_hours_per_session,
-        staff_hourly_cost,
-        dry_ice_blaster_cost,
-        liquid_co2_cost_per_litre,
-        liquid_co2_consumption_litre_per_hour,
-        blaster_maintenance_annual,
-        manual_cleaning_chemicals_per_session,
-        manual_cleaning_water_per_session,
-        manual_cleaning_waste_disposal_per_session,
-        dry_ice_cleaning_time_reduction_percent,
-        revenue_per_hour_production,
-        blaster_power_consumption_kw,
-        electricity_cost_per_kwh,
-        machine_lifespan_years
-    )
+# --- Calculate Button ---
+if st.button("Calculate Analysis", type="primary"):
+    with st.spinner("Updating calculations..."):
+        df_cba, annual_operational_cost_savings, net_financial_benefit_year_1, net_financial_benefit_subsequent_years, roi_over_lifespan, payback_period_years = perform_cba(
+            daily_cleaning_frequency,
+            manual_staff_count,
+            manual_cleaning_hours_per_session,
+            staff_hourly_cost,
+            dry_ice_blaster_cost,
+            liquid_co2_cost_per_litre,
+            liquid_co2_consumption_litre_per_hour,
+            blaster_maintenance_annual,
+            manual_cleaning_chemicals_per_session,
+            manual_cleaning_water_per_session,
+            manual_cleaning_waste_disposal_per_session,
+            dry_ice_cleaning_time_reduction_percent,
+            revenue_per_hour_production,
+            blaster_power_consumption_kw,
+            electricity_cost_per_kwh,
+            machine_lifespan_years
+        )
+        
+        # Store results in session state to persist them
+        st.session_state['results'] = {
+            "df_cba": df_cba,
+            "annual_operational_cost_savings": annual_operational_cost_savings,
+            "net_financial_benefit_year_1": net_financial_benefit_year_1,
+            "net_financial_benefit_subsequent_years": net_financial_benefit_subsequent_years,
+            "roi_over_lifespan": roi_over_lifespan,
+            "payback_period_years": payback_period_years,
+            "machine_lifespan_years": machine_lifespan_years
+        }
+
+# --- Display Results Section ---
+st.header("Cost-Benefit Analysis & Investment Metrics")
+
+if 'results' in st.session_state:
+    results = st.session_state['results']
     
-    st.markdown("---")
-    st.header("Cost-Benefit Analysis & Investment Metrics")
-
     st.subheader("Detailed Annual Cost Comparison")
-    st.dataframe(df_cba.set_index("Category"))
+    st.dataframe(results['df_cba'].set_index("Category"))
 
     st.markdown("---")
     st.subheader("Summary of Financial Impact")
@@ -273,22 +289,22 @@ with st.spinner("Updating calculations..."):
     with res_col1:
         st.metric(
             label="Annual Operational Cost Savings (Dry Ice vs. Manual)",
-            value=f"FJD {annual_operational_cost_savings:,.2f}",
-            delta=f"FJD {annual_operational_cost_savings:,.2f}" if annual_operational_cost_savings >= 0 else f"FJD {annual_operational_cost_savings:,.2f}"
+            value=f"FJD {results['annual_operational_cost_savings']:,.2f}",
+            delta=f"FJD {results['annual_operational_cost_savings']:,.2f}" if results['annual_operational_cost_savings'] >= 0 else f"FJD {results['annual_operational_cost_savings']:,.2f}"
         )
 
     with res_col2:
         st.metric(
             label="Net Financial Benefit - Year 1 (Includes Blaster Purchase)",
-            value=f"FJD {net_financial_benefit_year_1:,.2f}",
-            delta=f"FJD {net_financial_benefit_year_1:,.2f}" if net_financial_benefit_year_1 >= 0 else f"FJD {net_financial_benefit_year_1:,.2f}"
+            value=f"FJD {results['net_financial_benefit_year_1']:,.2f}",
+            delta=f"FJD {results['net_financial_benefit_year_1']:,.2f}" if results['net_financial_benefit_year_1'] >= 0 else f"FJD {results['net_financial_benefit_year_1']:,.2f}"
         )
 
     with res_col3:
         st.metric(
             label="Net Financial Benefit - Subsequent Years (Annual)",
-            value=f"FJD {net_financial_benefit_subsequent_years:,.2f}",
-            delta=f"FJD {net_financial_benefit_subsequent_years:,.2f}" if net_financial_benefit_subsequent_years >= 0 else f"FJD {net_financial_benefit_subsequent_years:,.2f}"
+            value=f"FJD {results['net_financial_benefit_subsequent_years']:,.2f}",
+            delta=f"FJD {results['net_financial_benefit_subsequent_years']:,.2f}" if results['net_financial_benefit_subsequent_years'] >= 0 else f"FJD {results['net_financial_benefit_subsequent_years']:,.2f}"
         )
 
     st.markdown("---")
@@ -298,25 +314,25 @@ with st.spinner("Updating calculations..."):
 
     with col_roi:
         st.metric(
-            label=f"Return on Investment (ROI) over {machine_lifespan_years} Years",
-            value=f"{roi_over_lifespan:,.2f}%",
-            delta="Higher is better!" if roi_over_lifespan >= 0 else "Negative ROI"
+            label=f"Return on Investment (ROI) over {results['machine_lifespan_years']} Years",
+            value=f"{results['roi_over_lifespan']:,.2f}%",
+            delta="Higher is better!" if results['roi_over_lifespan'] >= 0 else "Negative ROI"
         )
 
     with col_payback:
-        # Safely determine the delta text
+        payback_period_years = results['payback_period_years']
         delta_text = None
         is_positive_payback = False
         try:
-            # Check if payback_period_years is a string that contains 'years' and represents a positive number
             if "years" in str(payback_period_years):
-                # Extract the numeric part for comparison
                 numeric_part_str = str(payback_period_years).split(" ")[0]
-                if numeric_part_str != "<": # Handle the "< 1 year" case
+                if numeric_part_str != "<":
                     if float(numeric_part_str) > 0:
                         is_positive_payback = True
+                else: # Handles the "< 1 year" case
+                    is_positive_payback = True
         except (ValueError, IndexError):
-            is_positive_payback = False # In case of parsing errors
+            is_positive_payback = False
 
         if is_positive_payback:
             delta_text = "Shorter is better!"
@@ -326,28 +342,30 @@ with st.spinner("Updating calculations..."):
             value=f"{payback_period_years}",
             delta=delta_text
         )
+else:
+    st.info("Adjust the parameters above and click 'Calculate Analysis' to see the results.")
 
 
-    st.markdown("---")
-    st.subheader("Key Underlying Assumptions:")
-    st.markdown(f"""
-    * **Annual Cleaning Sessions:** `Daily Cleaning Frequency * 365 days`
-    * **Staff Hourly Cost:** Includes wages, benefits, and general overhead.
-    * **Dry Ice Blaster Staff:** Assumed 1 operator for dry ice blasting.
-    * **Dry Ice Blaster Power Consumption:** Assumed to be constant during the cleaning session hours.
-    * **Electricity Cost per kWh:** Based on BCF's average commercial rate. 
-    * **Revenue per Hour of Production:** This is a critical input that significantly impacts the overall benefit. Ensure this value is accurately estimated for BCF.
-    * **Return on Investment (ROI) Calculation:** Calculated as `(Total Net Financial Benefit over {machine_lifespan_years} Years / Dry Ice Blaster Purchase Cost) * 100`.
-        * **Underlying Assumption:** The annual net financial benefit (operational savings + revenue gain) is assumed to be constant each year after the initial investment year.
-    * **Simple Payback Period Calculation:** This calculates the time it takes for the cumulative net benefits to equal the initial investment.
-        * **Underlying Assumption:** The annual net financial benefit is assumed to be constant each year. 
-    """)
+st.markdown("---")
+st.subheader("Key Underlying Assumptions:")
+st.markdown(f"""
+* **Annual Cleaning Sessions:** `Daily Cleaning Frequency * 365 days`
+* **Staff Hourly Cost:** Includes wages, benefits, and general overhead.
+* **Dry Ice Blaster Staff:** Assumed 1 operator for dry ice blasting.
+* **Dry Ice Blaster Power Consumption:** Assumed to be constant during the cleaning session hours.
+* **Electricity Cost per kWh:** Based on BCF's average commercial rate. 
+* **Revenue per Hour of Production:** This is a critical input that significantly impacts the overall benefit. Ensure this value is accurately estimated for BCF.
+* **Return on Investment (ROI) Calculation:** Calculated as `(Total Net Financial Benefit over Lifespan / Dry Ice Blaster Purchase Cost) * 100`.
+    * **Underlying Assumption:** The annual net financial benefit (operational savings + revenue gain) is assumed to be constant each year after the initial investment year.
+* **Simple Payback Period Calculation:** This calculates the time it takes for the cumulative net benefits to equal the initial investment.
+    * **Underlying Assumption:** The annual net financial benefit is assumed to be constant each year. 
+""")
 
-    st.subheader("Qualitative Benefits of Dry Ice Blasting")
-    st.markdown("""
-    * **Improved Hygiene and Food Safety:** Superior cleaning, crucial for meeting stringent food safety standards (reduced risk of recalls, enhanced brand reputation).
-    * **Extended Equipment Lifespan:** Non-abrasive method preserves conveyor belts and associated machinery, reducing long-term capital expenditure.
-    * **Enhanced Worker Safety and Morale:** Eliminates chemical exposure, reduces physical strain, and improves working conditions.
-    * **Environmental Responsibility:** No secondary waste (water, chemicals), uses recycled CO2, contributing to a smaller environmental footprint.
-    * **Consistent Cleaning Quality:** Automated nature ensures a more uniform and deep clean compared to manual variations.
-    """)
+st.subheader("Qualitative Benefits of Dry Ice Blasting")
+st.markdown("""
+* **Improved Hygiene and Food Safety:** Superior cleaning, crucial for meeting stringent food safety standards (reduced risk of recalls, enhanced brand reputation).
+* **Extended Equipment Lifespan:** Non-abrasive method preserves conveyor belts and associated machinery, reducing long-term capital expenditure.
+* **Enhanced Worker Safety and Morale:** Eliminates chemical exposure, reduces physical strain, and improves working conditions.
+* **Environmental Responsibility:** No secondary waste (water, chemicals), uses recycled CO2, contributing to a smaller environmental footprint.
+* **Consistent Cleaning Quality:** Automated nature ensures a more uniform and deep clean compared to manual variations.
+""")
